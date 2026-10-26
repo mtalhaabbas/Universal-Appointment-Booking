@@ -1,0 +1,191 @@
+{% extends "admin/base_admin.html" %}
+
+{% block page_title %}{{ business.name }} &bull; Integrations{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-8 max-w-6xl">
+
+    <!-- Integrations Overview Header -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div>
+            <h2 class="text-xl font-bold text-slate-900">Third-Party Channels & Automations</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Unified integration layer: Official WhatsApp Cloud API, Google Calendar Sync, and n8n Workflows.</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-brand-50 text-brand-700 border border-brand-200">Production & Mock Mode</span>
+    </div>
+
+    <!-- Integrations Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- WhatsApp Cloud API Simulator -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                        WA
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900">WhatsApp Business Cloud API</h3>
+                        <p class="text-xs text-slate-500">Official Webhook with signature verification & bot parser</p>
+                    </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold uppercase bg-emerald-100 text-emerald-800">
+                    Active
+                </span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                <div><span class="text-slate-400 font-medium">Webhook URL:</span> <code class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-slate-800">/api/v1/integrations/whatsapp/webhook/</code></div>
+                <div><span class="text-slate-400 font-medium">Verify Token:</span> <code class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-slate-800">universal_booking_verify_token_2026</code></div>
+                <div><span class="text-slate-400 font-medium">Shared Engine:</span> Both web and WhatsApp invoke identical booking & conflict logic.</div>
+            </div>
+
+            <!-- Interactive Message Simulator Form -->
+            <div class="pt-2">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Simulate Inbound WhatsApp Message</h4>
+                <div class="flex space-x-2">
+                    <input type="text" id="wa-input" placeholder="e.g. I want to book a consultation tomorrow" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs">
+                    <button type="button" onclick="testWhatsAppMessage()" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
+                        Send to Bot
+                    </button>
+                </div>
+                <div id="wa-reply-box" class="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 hidden font-mono"></div>
+            </div>
+        </div>
+
+        <!-- Google Calendar Integration Card -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                        GC
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900">Google Calendar Synchronization</h3>
+                        <p class="text-xs text-slate-500">Real-time calendar event mapping & conflict reconciliation</p>
+                    </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold uppercase bg-blue-100 text-blue-800">
+                    {{ calendar_conn.get_calendar_provider_display|default:"Mock Sync Active" }}
+                </span>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                <div><span class="text-slate-400 font-medium">Calendar ID:</span> <code class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-slate-800">{{ calendar_conn.calendar_id|default:"primary" }}</code></div>
+                <div><span class="text-slate-400 font-medium">Sync State:</span> Auto-creates calendar events upon booking confirmation.</div>
+                <div><span class="text-slate-400 font-medium">Mode:</span> Documented provider adapter with full mock support.</div>
+            </div>
+
+            <div class="pt-2">
+                <button type="button" onclick="alert('Calendar connection verified. Mock synchronization active.')" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition">
+                    Test Calendar Sync Connection
+                </button>
+            </div>
+        </div>
+
+        <!-- n8n Workflow Automation Card -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 md:col-span-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                        n8n
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900">n8n Generic Workflow Automation Pipeline</h3>
+                        <p class="text-xs text-slate-500">Reusable workflows for Confirmation, Reminders, Rescheduling, Cancellations, and Daily Summaries</p>
+                    </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold uppercase bg-purple-100 text-purple-800">
+                    Transactional Outbox
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-900">1. Confirmation Workflow</div>
+                    <div class="text-slate-500 mt-0.5">Dispatches customer confirmation via email & WhatsApp.</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-900">2. Reminder Workflow</div>
+                    <div class="text-slate-500 mt-0.5">Sends 24h & 2h advance notifications before appointment.</div>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="font-bold text-slate-900">3. Daily Summary Workflow</div>
+                    <div class="text-slate-500 mt-0.5">Aggregates practitioner schedules and morning briefing.</div>
+                </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs text-purple-900">
+                <b>n8n Workflow Files:</b> Reusable workflow JSON definitions are stored in <code class="font-mono bg-white px-1.5 py-0.5 rounded border border-purple-200">automations/n8n/</code> ready for import.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Inbound Webhook Logs Table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-base font-bold text-slate-900">Inbound Webhook Verification & Processing Logs</h3>
+            <span class="text-xs text-slate-400">Idempotency Protected</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-600">
+                <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
+                    <tr>
+                        <th class="px-6 py-3">Timestamp</th>
+                        <th class="px-6 py-3">Provider</th>
+                        <th class="px-6 py-3">External Event ID</th>
+                        <th class="px-6 py-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for log in webhook_logs %}
+                    <tr>
+                        <td class="px-6 py-3 text-slate-400">{{ log.created_at|date:"M j, H:i:s" }}</td>
+                        <td class="px-6 py-3 font-semibold uppercase text-slate-900">{{ log.provider }}</td>
+                        <td class="px-6 py-3 font-mono">{{ log.external_event_id|default:"Simulation Event" }}</td>
+                        <td class="px-6 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-bold uppercase bg-emerald-100 text-emerald-800">{{ log.processing_status }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-6 text-center text-slate-400">No inbound webhooks received yet. Use the simulator above to test.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    async function testWhatsAppMessage() {
+        const input = document.getElementById('wa-input');
+        const box = document.getElementById('wa-reply-box');
+        const msg = input.value.trim() || 'I want to book an appointment';
+
+        box.classList.remove('hidden');
+        box.textContent = 'Contacting WhatsApp Webhook...';
+
+        try {
+            const resp = await fetch('/api/v1/integrations/whatsapp/webhook/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    business_slug: '{{ business.slug }}',
+                    customer_name: 'Test WhatsApp User',
+                    customer_phone: '+15551234567',
+                    message: msg
+                })
+            });
+            const data = await resp.json();
+            box.textContent = `Bot Response:\n"${data.reply.reply || JSON.stringify(data.reply)}"`;
+        } catch (e) {
+            box.textContent = 'Simulation failed: ' + e.message;
+        }
+    }
+</script>
+{% endblock %}

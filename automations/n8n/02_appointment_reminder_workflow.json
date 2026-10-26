@@ -1,0 +1,111 @@
+{
+  "name": "02 - Universal Appointment Reminder Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "node-cron-hourly",
+      "name": "Hourly Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "http://web:8000/api/v1/admin/bookings/?status=confirmed",
+        "options": {}
+      },
+      "id": "node-fetch-upcoming",
+      "name": "Fetch Confirmed Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Evaluates which appointments are due for 24-hour reminder\nconst items = $input.all();\nconst results = [];\nconst now = new Date().getTime();\n\nfor (const item of items) {\n  const resultsList = item.json.results || [];\n  for (const bkg of resultsList) {\n    const startTime = new Date(bkg.start_time).getTime();\n    const hoursDiff = (startTime - now) / (1000 * 60 * 60);\n    \n    // Send reminder if between 23 and 25 hours away\n    if (hoursDiff >= 23 && hoursDiff <= 25) {\n      results.push({ json: bkg });\n    }\n  }\n}\nreturn results;"
+      },
+      "id": "node-filter-24h",
+      "name": "Find 24h Approaching",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://web:8000/api/v1/integrations/whatsapp/webhook/",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"business_slug\": \"{{ $json.business_slug }}\",\n  \"customer_phone\": \"{{ $json.customer.phone }}\",\n  \"customer_name\": \"{{ $json.customer.name }}\",\n  \"message\": \"Reminder: You have an upcoming appointment for {{ $json.service.name }} tomorrow at {{ $json.start_time }}. Ref: {{ $json.booking_reference }}\"\n}"
+      },
+      "id": "node-send-reminder-wa",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "reminders@universalbooking.local",
+        "toEmail": "={{ $json.customer.email }}",
+        "subject": "={{ 'Appointment Reminder: Tomorrow at ' + $json.business_name }}",
+        "text": "={{ 'Hi ' + $json.customer.name + ', this is a reminder for your upcoming ' + $json.service.name + ' tomorrow at ' + $json.start_time + '.' }}"
+      },
+      "id": "node-send-reminder-email",
+      "name": "Send Email Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [880, 380]
+    }
+  ],
+  "connections": {
+    "Hourly Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Confirmed Bookings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Confirmed Bookings": {
+      "main": [
+        [
+          {
+            "node": "Find 24h Approaching",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find 24h Approaching": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reminder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

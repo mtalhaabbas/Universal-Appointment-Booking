@@ -1,0 +1,90 @@
+{
+  "name": "03 - Universal Booking Rescheduling Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-events-reschedule",
+        "options": {}
+      },
+      "id": "node-reschedule-webhook",
+      "name": "Reschedule Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "booking.rescheduled"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-rescheduled",
+      "name": "Is Rescheduled Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@universalbooking.local",
+        "toEmail": "={{ $json.body.customer_email }}",
+        "subject": "={{ 'Appointment Rescheduled: ' + $json.body.service_name + ' at ' + $json.body.business_name }}",
+        "text": "={{ 'Hi ' + $json.body.customer_name + ', your appointment for ' + $json.body.service_name + ' has been rescheduled to ' + $json.body.starts_at + ' (' + $json.body.timezone + '). Reference: ' + $json.body.booking_reference }}"
+      },
+      "id": "node-send-reschedule-email",
+      "name": "Send Reschedule Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://web:8000/api/v1/integrations/whatsapp/webhook/",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"business_slug\": \"{{ $json.body.business_slug }}\",\n  \"customer_phone\": \"{{ $json.body.customer_phone }}\",\n  \"customer_name\": \"{{ $json.body.customer_name }}\",\n  \"message\": \"Appointment Rescheduled: Your {{ $json.body.service_name }} is now scheduled for {{ $json.body.starts_at }}. Ref: {{ $json.body.booking_reference }}\"\n}"
+      },
+      "id": "node-send-reschedule-wa",
+      "name": "Send Reschedule WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [720, 380]
+    }
+  ],
+  "connections": {
+    "Reschedule Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Rescheduled Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Rescheduled Event?": {
+      "main": [
+        [
+          {
+            "node": "Send Reschedule Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Reschedule WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "05 - Universal Notification Delivery Retry Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "node-retry-cron",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Identifies failed notifications that have retry count < 3\n// In production, queries Django outbox / delivery queue endpoint\nreturn [\n  {\n    json: {\n      \"retry_batch_timestamp\": new Date().toISOString(),\n      \"max_retries\": 3,\n      \"backoff_multiplier\": 2\n    }\n  }\n];"
+      },
+      "id": "node-process-retries",
+      "name": "Process Failed Outbox Queue",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://web:8000/api/v1/integrations/whatsapp/webhook/",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"event\": \"outbox.retry_cycle\",\n  \"status\": \"healthy\",\n  \"timestamp\": \"{{ $json.retry_batch_timestamp }}\"\n}"
+      },
+      "id": "node-trigger-retry-dispatch",
+      "name": "Dispatch Retry Requests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Process Failed Outbox Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Failed Outbox Queue": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Retry Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

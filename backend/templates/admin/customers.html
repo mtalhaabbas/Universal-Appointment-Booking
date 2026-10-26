@@ -1,0 +1,69 @@
+{% extends "admin/base_admin.html" %}
+
+{% block page_title %}{{ business.name }} &bull; Customers{% endblock %}
+
+{% block admin_content %}
+<div class="space-y-6 max-w-7xl">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-xl font-bold text-slate-900">Customer Directory</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Isolated customer records for {{ business.name }}.</p>
+        </div>
+        <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">{{ customers.count }} Total Clients</span>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <form method="GET" class="flex gap-3 items-center">
+            <div class="relative flex-1">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Search client name, email, or phone..." class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-hidden">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+            </div>
+            <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800">Search</button>
+            {% if search_query %}
+            <a href="/dashboard/{{ business.slug }}/customers/" class="text-xs font-semibold text-slate-500 hover:text-slate-800">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Customers Table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                    <tr>
+                        <th class="px-6 py-3.5">Customer Name</th>
+                        <th class="px-6 py-3.5">Email</th>
+                        <th class="px-6 py-3.5">Phone Number</th>
+                        <th class="px-6 py-3.5">Total Bookings</th>
+                        <th class="px-6 py-3.5">First Seen</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for c in customers %}
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="px-6 py-4 font-semibold text-slate-900">{{ c.name }}</td>
+                        <td class="px-6 py-4 text-xs">{{ c.email|default:"-" }}</td>
+                        <td class="px-6 py-4 text-xs font-mono">{{ c.phone|default:"-" }}</td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-brand-50 text-brand-700">
+                                {{ c.booking_count }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-400">{{ c.created_at|date:"M j, Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-400 text-sm">
+                            No customers found for this business.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

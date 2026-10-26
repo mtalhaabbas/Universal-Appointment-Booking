@@ -1,0 +1,92 @@
+{
+  "name": "06 - Universal Daily Booking Summary Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-daily-cron",
+      "name": "Daily Morning 7:00 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "http://web:8000/api/v1/businesses/",
+        "options": {}
+      },
+      "id": "node-get-businesses",
+      "name": "Fetch All Active Businesses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generates morning briefing summary payload for each business tenant\nconst items = $input.all();\nconst summaries = [];\nconst today = new Date().toISOString().split('T')[0];\n\nfor (const item of items) {\n  const results = item.json.results || [];\n  for (const b of results) {\n    summaries.push({\n      json: {\n        business_slug: b.slug,\n        business_name: b.name,\n        contact_email: b.contact_email,\n        time_zone: b.time_zone,\n        date: today,\n        summary_title: `Daily Schedule Briefing for ${b.name} (${today})`\n      }\n    });\n  }\n}\nreturn summaries;"
+      },
+      "id": "node-build-summaries",
+      "name": "Build Tenant Summaries",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "daily-summary@universalbooking.local",
+        "toEmail": "={{ $json.contact_email }}",
+        "subject": "={{ $json.summary_title }}",
+        "text": "={{ 'Good morning! Here is your automated daily schedule overview for ' + $json.business_name + ' on ' + $json.date + '. Access your live dashboard at http://localhost:8000/dashboard/' + $json.business_slug + '/' }}"
+      },
+      "id": "node-send-summary-email",
+      "name": "Send Staff Summary Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Daily Morning 7:00 AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Active Businesses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Active Businesses": {
+      "main": [
+        [
+          {
+            "node": "Build Tenant Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Tenant Summaries": {
+      "main": [
+        [
+          {
+            "node": "Send Staff Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "name": "01 - Universal Booking Confirmation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-events",
+        "options": {}
+      },
+      "id": "node-webhook-trigger",
+      "name": "Booking Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "booking.confirmed"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-confirmed",
+      "name": "Is Booking Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "event_id", "value": "={{ $json.body.event_id }}" },
+            { "name": "business_name", "value": "={{ $json.body.business_name }}" },
+            { "name": "customer_name", "value": "={{ $json.body.customer_name }}" },
+            { "name": "customer_email", "value": "={{ $json.body.customer_email }}" },
+            { "name": "customer_phone", "value": "={{ $json.body.customer_phone }}" },
+            { "name": "service_name", "value": "={{ $json.body.service_name }}" },
+            { "name": "staff_name", "value": "={{ $json.body.staff_name }}" },
+            { "name": "starts_at", "value": "={{ $json.body.starts_at }}" },
+            { "name": "timezone", "value": "={{ $json.body.timezone }}" },
+            { "name": "booking_reference", "value": "={{ $json.body.booking_reference }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-format-data",
+      "name": "Normalize Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://web:8000/api/v1/integrations/whatsapp/webhook/",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"business_slug\": \"{{ $json.business_slug }}\",\n  \"customer_phone\": \"{{ $json.customer_phone }}\",\n  \"customer_name\": \"{{ $json.customer_name }}\",\n  \"message\": \"Appointment Confirmed: {{ $json.service_name }} on {{ $json.starts_at }} with {{ $json.staff_name }}. Ref: {{ $json.booking_reference }}\"\n}"
+      },
+      "id": "node-send-whatsapp",
+      "name": "Send WhatsApp Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [950, 180]
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@universalbooking.local",
+        "toEmail": "={{ $json.customer_email }}",
+        "subject": "={{ 'Appointment Confirmed: ' + $json.service_name + ' at ' + $json.business_name }}",
+        "text": "={{ 'Hello ' + $json.customer_name + ', your booking for ' + $json.service_name + ' with ' + $json.staff_name + ' is confirmed for ' + $json.starts_at + ' (' + $json.timezone + '). Reference: ' + $json.booking_reference }}"
+      },
+      "id": "node-send-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [950, 320]
+    }
+  ],
+  "connections": {
+    "Booking Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Booking Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Booking Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

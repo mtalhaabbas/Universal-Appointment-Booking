@@ -1,0 +1,90 @@
+{
+  "name": "04 - Universal Booking Cancellation Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-events-cancel",
+        "options": {}
+      },
+      "id": "node-cancel-webhook",
+      "name": "Cancellation Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.event_type }}",
+              "value2": "booking.cancelled"
+            }
+          ]
+        }
+      },
+      "id": "node-filter-cancelled",
+      "name": "Is Cancelled Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "notifications@universalbooking.local",
+        "toEmail": "={{ $json.body.customer_email }}",
+        "subject": "={{ 'Appointment Cancelled: ' + $json.body.service_name + ' at ' + $json.body.business_name }}",
+        "text": "={{ 'Hello ' + $json.body.customer_name + ', your booking for ' + $json.body.service_name + ' on ' + $json.body.starts_at + ' has been cancelled. We hope to see you again soon.' }}"
+      },
+      "id": "node-send-cancel-email",
+      "name": "Send Cancellation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://web:8000/api/v1/integrations/whatsapp/webhook/",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"business_slug\": \"{{ $json.body.business_slug }}\",\n  \"customer_phone\": \"{{ $json.body.customer_phone }}\",\n  \"customer_name\": \"{{ $json.body.customer_name }}\",\n  \"message\": \"Appointment Cancelled: Your booking for {{ $json.body.service_name }} has been cancelled. Ref: {{ $json.body.booking_reference }}\"\n}"
+      },
+      "id": "node-send-cancel-wa",
+      "name": "Send Cancellation WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [720, 380]
+    }
+  ],
+  "connections": {
+    "Cancellation Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Cancelled Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Cancelled Event?": {
+      "main": [
+        [
+          {
+            "node": "Send Cancellation Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Cancellation WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
